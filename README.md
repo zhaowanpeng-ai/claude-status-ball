@@ -88,7 +88,7 @@ If Claude Code runs inside WSL, see [Claude Code runs inside WSL](#wsl-en) befor
 Clone the repository on Windows, or download and extract the ZIP:
 
 ```powershell
-git clone https://github.com/<your-username>/claude-status-ball.git C:\Tools\claude-status-ball
+git clone https://github.com/zhaowanpeng-ai/claude-status-ball.git C:\Tools\claude-status-ball
 cd C:\Tools\claude-status-ball\app
 npm install
 ```
@@ -109,7 +109,7 @@ Choose the option that matches where Claude Code runs.
 Run the installer on the server that hosts Claude Code:
 
 ```bash
-git clone https://github.com/<your-username>/claude-status-ball.git
+git clone https://github.com/zhaowanpeng-ai/claude-status-ball.git
 cd claude-status-ball
 bash remote/install_remote.sh
 ```
@@ -472,7 +472,7 @@ flowchart LR
 在 Windows 上克隆仓库，或下载 ZIP 后解压：
 
 ```powershell
-git clone https://github.com/<your-username>/claude-status-ball.git C:\Tools\claude-status-ball
+git clone https://github.com/zhaowanpeng-ai/claude-status-ball.git C:\Tools\claude-status-ball
 cd C:\Tools\claude-status-ball\app
 npm install
 ```
@@ -493,7 +493,7 @@ npm install
 在运行 Claude Code 的服务器上执行安装器：
 
 ```bash
-git clone https://github.com/<your-username>/claude-status-ball.git
+git clone https://github.com/zhaowanpeng-ai/claude-status-ball.git
 cd claude-status-ball
 bash remote/install_remote.sh
 ```
