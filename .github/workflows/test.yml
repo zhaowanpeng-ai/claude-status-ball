@@ -1,0 +1,44 @@
+name: tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: State, server and placement tests
+        run: node test/smoke.js
+
+      - name: Node hook and local installer tests
+        run: |
+          node test/test_hook_js.js
+          node test/test_install.js
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Python hook end-to-end tests
+        run: python3 test/test_hook.py
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Windows local hook and installer tests
+        run: |
+          node test/test_hook_js.js
+          node test/test_install.js

@@ -1,0 +1,24 @@
+# Only needed for remote mode (Claude Code on a server).
+# If Claude Code runs on the same Windows PC, use remote/install_local.js
+# instead and skip SSH configuration entirely.
+#
+# Save as C:\Users\<your-name>\.ssh\config (no .txt extension).
+# Replace myserver / HostName / User with the values you actually use.
+# The key line is RemoteForward:
+#   listen on 127.0.0.1:47831 on the remote server and forward connections
+#   to 127.0.0.1:47831 on the Windows machine, where the status ball app runs.
+
+Host myserver
+    HostName 1.2.3.4
+    User root
+    RemoteForward 47831 127.0.0.1:47831
+
+# Notes:
+# - Every subsequent `ssh myserver` automatically opens this reverse tunnel.
+# - With several connections to the same server, later ones may print
+#   "remote port forwarding failed for listen port 47831". Ignore it:
+#   the first connection owns the port, and events still work.
+# - If the server sets AllowTcpForwarding no, ask the administrator to
+#   restore the default value (yes).
+# - If you connect with `ssh root@1.2.3.4`, use `Host 1.2.3.4` instead
+#   of `Host myserver`.

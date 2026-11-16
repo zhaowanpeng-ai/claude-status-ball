@@ -1,0 +1,85 @@
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+body {
+  width: 320px;
+  font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+}
+
+.card {
+  margin: 8px;
+  padding: 12px 14px;
+  box-sizing: border-box;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(17, 22, 30, 0.94);
+  color: #e8eef6;
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.45);
+  cursor: pointer;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #bfe6cd;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #34d27b;
+  box-shadow: 0 0 10px rgba(52, 210, 123, 0.5);
+}
+
+.card.waiting .dot {
+  background: #f0a020;
+  box-shadow: 0 0 10px rgba(240, 160, 32, 0.5);
+}
+
+.name {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.kind {
+  margin-left: auto;
+  flex: none;
+  font-size: 11px;
+  font-weight: 500;
+  color: #8b98a5;
+}
+
+.card.waiting .kind {
+  color: #f0c070;
+}
+
+.text {
+  margin-top: 8px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: #dbe4ee;
+  white-space: pre-wrap;
+  word-break: break-word;
+  display: -webkit-box;
+  -webkit-line-clamp: 6;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.foot {
+  margin-top: 8px;
+  font-size: 11px;
+  color: #7c8896;
+}

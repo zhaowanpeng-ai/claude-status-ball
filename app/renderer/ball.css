@@ -1,0 +1,166 @@
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.stage {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  cursor: pointer;
+}
+
+.ball {
+  --c1: #3d8bfd;
+  --c2: #0b2f66;
+  --glow: rgba(61, 139, 253, 0.5);
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  position: relative;
+  transform-origin: 50% 50%;
+  background:
+    radial-gradient(circle at 32% 26%, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0) 42%),
+    radial-gradient(circle at 50% 58%, var(--c1), var(--c2) 82%);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 6px 16px rgba(0, 0, 0, 0.42),
+    0 0 18px var(--glow);
+}
+
+.ball::after {
+  content: "";
+  position: absolute;
+  left: 15%;
+  top: 11%;
+  width: 38%;
+  height: 26%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0) 70%);
+  filter: blur(1px);
+}
+
+.ball.running {
+  --c1: #3d8bfd;
+  --c2: #0b2f66;
+  --glow: rgba(61, 139, 253, 0.5);
+  animation: breathe 2.8s ease-in-out infinite;
+}
+
+.ball.waiting {
+  --c1: #f0a020;
+  --c2: #5a3200;
+  --glow: rgba(240, 160, 32, 0.62);
+  animation: alert 1.05s ease-in-out infinite;
+}
+
+.ball.done {
+  --c1: #34d27b;
+  --c2: #0a3d22;
+  --glow: rgba(52, 210, 123, 0.6);
+  animation: doneGlow 2.6s ease-in-out infinite;
+}
+
+.ball.done.pop {
+  animation:
+    popShake 0.95s cubic-bezier(0.2, 1.2, 0.4, 1) 1,
+    doneGlow 2.6s ease-in-out 0.95s infinite;
+}
+
+.label {
+  position: relative;
+  z-index: 1;
+  max-width: 116px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  font: 600 10px/1.35 "Segoe UI", "Microsoft YaHei", sans-serif;
+  color: #e8eef6;
+  background: rgba(10, 14, 20, 0.55);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+body.has-label .label {
+  opacity: 0.95;
+}
+
+@keyframes breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.07);
+  }
+}
+
+@keyframes alert {
+  0%,
+  100% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+  50% {
+    transform: scale(1.05);
+    filter: brightness(1.25);
+  }
+}
+
+@keyframes doneGlow {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.08),
+      0 6px 16px rgba(0, 0, 0, 0.42),
+      0 0 16px var(--glow);
+  }
+  50% {
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.08),
+      0 6px 16px rgba(0, 0, 0, 0.42),
+      0 0 30px var(--glow);
+  }
+}
+
+@keyframes popShake {
+  0% {
+    transform: scale(1) translateX(0) rotate(0deg);
+  }
+  16% {
+    transform: scale(1.24) translateX(0) rotate(0deg);
+  }
+  28% {
+    transform: scale(1.12) translateX(-6px) rotate(-6deg);
+  }
+  40% {
+    transform: scale(1.12) translateX(6px) rotate(6deg);
+  }
+  52% {
+    transform: scale(1.12) translateX(-5px) rotate(-4deg);
+  }
+  64% {
+    transform: scale(1.13) translateX(5px) rotate(4deg);
+  }
+  76% {
+    transform: scale(1.1) translateX(-3px) rotate(-2deg);
+  }
+  88% {
+    transform: scale(1.05) translateX(2px) rotate(1deg);
+  }
+  100% {
+    transform: scale(1) translateX(0) rotate(0deg);
+  }
+}
