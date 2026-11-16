@@ -2,7 +2,7 @@
   "name": "claude-status-ball",
   "version": "0.1.0",
   "private": true,
-  "description": "A Windows desktop status ball for Claude Code sessions",
+  "description": "A Windows desktop status ball for local and remote Claude Code sessions",
   "license": "MIT",
   "main": "main.js",
   "engines": {
