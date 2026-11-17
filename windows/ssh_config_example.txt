@@ -2,6 +2,10 @@
 # If Claude Code runs on the same Windows PC, use remote/install_local.js
 # instead and skip SSH configuration entirely.
 #
+# If you use windows\start_tunnel.vbs, you do not need this file.
+# The tunnel helper and RemoteForward both try to own remote port 47831;
+# use one or the other, not both.
+#
 # Save as C:\Users\<your-name>\.ssh\config (no .txt extension).
 # Replace myserver / HostName / User with the values you actually use.
 # The key line is RemoteForward:

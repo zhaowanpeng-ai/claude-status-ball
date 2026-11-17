@@ -1,0 +1,25 @@
+# Copy this file to:
+#   %USERPROFILE%\.claude-ball\tunnel.conf
+#
+# Then replace SERVER with the destination you use with ssh.
+# Do not commit your real server address to a public repository.
+#
+# Examples:
+#   SERVER=root@1.2.3.4
+#   SERVER=myserver
+SERVER=root@1.2.3.4
+
+# SSH port on the server. Usually 22.
+SSH_PORT=22
+
+# Port on the Linux server. Must match the hook sender's target.
+REMOTE_PORT=47831
+
+# Port on Windows where the Electron app listens.
+LOCAL_PORT=47831
+
+# Optional full path to ssh.exe. Leave empty to auto-detect the
+# standard Windows OpenSSH client.
+# Example:
+#   SSH_EXE=C:\Program Files\Git\usr\bin\ssh.exe
+SSH_EXE=

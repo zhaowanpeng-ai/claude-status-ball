@@ -126,16 +126,52 @@ Restart any running Claude Code sessions afterward so they load the new hooks.
 
 If you do not want to run the script, merge `remote/settings-hooks.snippet.json` into `~/.claude/settings.json` manually.
 
-Then open the reverse tunnel on Windows. Edit `C:\Users\<your-name>\.ssh\config` (create it if needed) and add a block that matches the host you actually use:
+Then connect the Windows app to the server. The repository includes a small tunnel helper that keeps the reverse forward alive, retries every 10 seconds after a disconnect, and writes a log.
+
+1. Create the tunnel config:
+
+   ```powershell
+   New-Item -ItemType Directory -Force "$env:USERPROFILE\.claude-ball" | Out-Null
+   Copy-Item windows\tunnel.conf.example "$env:USERPROFILE\.claude-ball\tunnel.conf"
+   notepad "$env:USERPROFILE\.claude-ball\tunnel.conf"
+   ```
+
+   Set `SERVER` to the destination you normally pass to `ssh`, for example `root@1.2.3.4` or an alias from `%USERPROFILE%\.ssh\config`. Change the ports only if you changed them in the hooks or the app. Set `SSH_EXE` if `ssh.exe` is not in the standard OpenSSH location.
+
+2. Test SSH once from Windows:
+
+   ```powershell
+   ssh root@1.2.3.4
+   ```
+
+   Exit with `exit`. The helper runs with `BatchMode=yes`, so it cannot type a password or accept a new host key. Passwordless key login and an accepted host key are required.
+
+3. Start the tunnel by double-clicking `windows\start_tunnel.vbs`. It runs hidden. If no events arrive, check the log:
+
+   ```powershell
+   Get-Content "$env:USERPROFILE\claude-status-ball-tunnel.log" -Tail 30
+   ```
+
+   The log is held by `ssh` while the tunnel is connected, so reading it may fail until you stop the tunnel.
+
+4. On the server, confirm the listener:
+
+   ```bash
+   ss -ltn | grep 47831
+   ```
+
+   You should see `127.0.0.1:47831`.
+
+**Alternative: use your existing SSH config.** If you already keep an interactive SSH connection open and do not want a separate tunnel process, add `RemoteForward` to `%USERPROFILE%\.ssh\config`:
 
 ```sshconfig
 Host 1.2.3.4
     RemoteForward 47831 127.0.0.1:47831
 ```
 
-If you connect as `ssh root@1.2.3.4`, `Host 1.2.3.4` is enough. If you use an alias such as `ssh myserver`, use `Host myserver` and add `HostName`/`User`. See `windows/ssh_config_example.txt`.
+Use either the helper or `RemoteForward`, not both: both try to own remote port 47831. If you use the helper, do not add `RemoteForward` for the same host. See `windows/ssh_config_example.txt`.
 
-Important details:
+Manual `RemoteForward` details:
 
 - The file must be named `config`, **not** `config.txt`. Windows Explorer hides extensions by default.
 - The `Host` value must match the hostname in your `ssh` command.
@@ -150,11 +186,7 @@ Important details:
 
 - If you use WSL or Git Bash, `ssh` reads that environment's `~/.ssh/config`, not the Windows one.
 - The listener exists only while an SSH connection carrying the forward is alive. The Electron app does **not** need to be running for the listener to exist, but it does need to be running for events to be accepted.
-- Multiple simultaneous connections to the same server may print `remote port forwarding failed for listen port 47831`. This is harmless: the first connection already owns the port. Alternatively, keep one dedicated tunnel open:
-
-  ```powershell
-  ssh -N -R 47831:127.0.0.1:47831 root@1.2.3.4
-  ```
+- Multiple simultaneous connections to the same server may print `remote port forwarding failed for listen port 47831`. This is harmless: the first connection already owns the port.
 
 ##### Option B: Claude Code on the same Windows PC (no tunnel)
 
@@ -197,7 +229,14 @@ npm start
 
 A small ball icon appears in the tray. The VBS launcher hides the console window.
 
-To start it at login, create a shortcut to `start_ball.vbs` and put it in the Startup folder (`Win+R` → `shell:startup`).
+To start at login, run the startup installer from the repository root:
+
+```powershell
+cd C:\Tools\claude-status-ball
+powershell -ExecutionPolicy Bypass -File .\windows\install_startup.ps1
+```
+
+It creates Startup shortcuts for the ball and, in remote mode, the tunnel helper. It prompts for the SSH destination if `%USERPROFILE%\.claude-ball\tunnel.conf` does not exist. In local mode use `-LocalOnly` to skip the tunnel shortcut. You can also create the shortcuts manually and put them in the Startup folder (`Win+R` → `shell:startup`).
 
 #### Step 4: Verify
 
@@ -232,7 +271,7 @@ To start it at login, create a shortcut to `start_ball.vbs` and put it in the St
 ### Configuration
 
 - Hook target URL: `CLAUDE_BALL_URL`, default `http://127.0.0.1:47831/event`. Applies to both senders.
-- Port `47831` is shared by the app, the SSH `RemoteForward` line (remote mode), and the hooks. Changing it requires updating all three.
+- Port `47831` is shared by the app, the hooks, and the tunnel (remote mode: `tunnel.conf`, or the `RemoteForward` line if you use SSH config). Changing it requires updating all of them.
 - Ball position is stored in `%APPDATA%\claude-status-ball\position.json`. Delete that file to reset it to the primary display's bottom-right corner.
 - Remote mode: hooks and script live in `~/.claude-ball/`; settings are in `~/.claude/settings.json`.
 - Local mode: hooks and script live in `%USERPROFILE%\.claude-ball\`; settings are in `%USERPROFILE%\.claude\settings.json`.
@@ -279,7 +318,14 @@ Claude Code inside WSL does not use the Windows hook installation. Follow [Claud
 
 #### Remote mode: `ss -ltn | grep 47831` shows nothing on the server
 
-The SSH client did not request the forward. Check, in order:
+If you use the tunnel helper, check `%USERPROFILE%\claude-status-ball-tunnel.log` first. Stop the tunnel if Windows says the file is in use. The log should show `ssh=... server=...`; repeated `ssh exited:` lines mean ssh is failing. Common causes:
+
+- `Permission denied (publickey)`: key authentication is not working. Test `ssh <destination>` once.
+- `Host key verification failed`: connect once interactively and accept the host key.
+- `ssh.exe not found`: set `SSH_EXE` in `%USERPROFILE%\.claude-ball\tunnel.conf`.
+- `remote port forwarding failed`: remote port 47831 is already owned by another tunnel. Stop the duplicate.
+
+If you use `RemoteForward` instead, check, in order:
 
 1. The file is `%USERPROFILE%\.ssh\config`, not `config.txt`.
 2. The `Host` block matches the exact hostname used in your `ssh` command.
@@ -370,7 +416,12 @@ remote/     hook senders and installers
   hook_send.js      local Windows sender (Node)
   install_remote.sh remote Linux installer
   install_local.js  local Windows installer
-windows/    SSH reverse-tunnel example (remote mode)
+windows/    Windows helpers for remote mode
+  ssh_config_example.txt   manual RemoteForward alternative
+  tunnel.conf.example      copy to %USERPROFILE%\.claude-ball\tunnel.conf
+  start_tunnel.vbs         hidden tunnel launcher
+  start_tunnel.cmd         tunnel loop, retry, and logging
+  install_startup.ps1      creates Startup shortcuts
 test/       Node and Python tests, visual smoke script
 docs/       README media
 ```
@@ -379,8 +430,9 @@ docs/       README media
 
 1. Remote mode: restore `~/.claude/settings.json.bak.*` or remove the hook entries containing `claude-ball`; then delete `~/.claude-ball/`.
 2. Local mode: remove the hook entries containing `claude-ball` from `%USERPROFILE%\.claude\settings.json` (or restore the backup), then delete `%USERPROFILE%\.claude-ball\hook_send.js`.
-3. Delete the app folder and the Startup shortcut.
-4. Optionally delete `%APPDATA%\claude-status-ball\`.
+3. Remove the Startup shortcuts `Claude Status Ball.lnk` and `Claude Status Ball Tunnel.lnk`.
+4. Delete the app folder.
+5. Optionally delete `%APPDATA%\claude-status-ball\`, `%USERPROFILE%\.claude-ball\tunnel.conf`, and `%USERPROFILE%\claude-status-ball-tunnel.log`.
 
 ### License
 
@@ -510,16 +562,52 @@ bash remote/install_remote.sh
 
 如果不想运行脚本，也可以手动把 `remote/settings-hooks.snippet.json` 合并到 `~/.claude/settings.json`。
 
-然后在 Windows 上打开反向隧道。编辑 `C:\Users\<你的用户名>\.ssh\config`（没有就新建），加入与实际连接方式匹配的配置：
+然后在 Windows 上把应用接到服务器。仓库自带一个小型隧道助手，会保持反向转发、断线后每 10 秒重连，并写日志。
+
+1. 创建隧道配置：
+
+   ```powershell
+   New-Item -ItemType Directory -Force "$env:USERPROFILE\.claude-ball" | Out-Null
+   Copy-Item windows\tunnel.conf.example "$env:USERPROFILE\.claude-ball\tunnel.conf"
+   notepad "$env:USERPROFILE\.claude-ball\tunnel.conf"
+   ```
+
+   把 `SERVER` 改成你平时 `ssh` 用的目标，例如 `root@1.2.3.4`，或 `%USERPROFILE%\.ssh\config` 里的别名。只有改过 hook 或应用端口时才需要改端口。如果 `ssh.exe` 不在标准 OpenSSH 路径，设置 `SSH_EXE`。
+
+2. 先在 Windows 上手动连接一次：
+
+   ```powershell
+   ssh root@1.2.3.4
+   ```
+
+   用 `exit` 退出。助手使用 `BatchMode=yes`，不能输入密码，也不能接受新的 host key；所以必须先确认免密登录和服务器指纹已经处理好。
+
+3. 双击 `windows\start_tunnel.vbs` 启动隧道。它会隐藏运行。如果球没有事件，检查日志：
+
+   ```powershell
+   Get-Content "$env:USERPROFILE\claude-status-ball-tunnel.log" -Tail 30
+   ```
+
+   隧道连接期间日志会被 ssh 占用，读不了是正常的；停止隧道后再看。
+
+4. 在服务器上确认监听：
+
+   ```bash
+   ss -ltn | grep 47831
+   ```
+
+   应看到 `127.0.0.1:47831`。
+
+**替代方案：复用现有 SSH 配置。** 如果你本来就长期开着交互式 SSH，不想多一个隧道进程，可以在 `%USERPROFILE%\.ssh\config` 里加 `RemoteForward`：
 
 ```sshconfig
 Host 1.2.3.4
     RemoteForward 47831 127.0.0.1:47831
 ```
 
-如果你平时用 `ssh root@1.2.3.4`，写 `Host 1.2.3.4` 就够了。如果用别名 `ssh myserver`，则写 `Host myserver`，并补上 `HostName`/`User`。示例见 `windows/ssh_config_example.txt`。
+助手和 `RemoteForward` 二选一，不要同时用：两者都会抢远端 47831。用助手时，不要给同一主机再加 `RemoteForward`。示例见 `windows/ssh_config_example.txt`。
 
-重要细节：
+手动 `RemoteForward` 的细节：
 
 - 文件名必须是 `config`，**不能是 `config.txt`**。Windows 资源管理器默认隐藏扩展名。
 - `Host` 必须和 `ssh` 命令里的主机名一致。
@@ -534,11 +622,7 @@ Host 1.2.3.4
 
 - 如果使用 WSL 或 Git Bash，`ssh` 读取的是那个环境里的 `~/.ssh/config`，不是 Windows 的配置。
 - 只有承载转发的 SSH 连接还活着时，服务器上的监听端口才存在。Electron 应用不需要一直运行才能让监听存在，但必须有应用在运行，事件才会被接收。
-- 同时开多个到同一服务器的 SSH 连接时，后连接的可能会打印 `remote port forwarding failed for listen port 47831`。这是正常的：端口已经被第一条连接占用。也可以专门保留一条隧道：
-
-  ```powershell
-  ssh -N -R 47831:127.0.0.1:47831 root@1.2.3.4
-  ```
+- 同时开多个到同一服务器的 SSH 连接时，后连接的可能会打印 `remote port forwarding failed for listen port 47831`。这是正常的：端口已经被第一条连接占用。
 
 ##### 方案 B：Claude Code 在同一台 Windows 电脑上（不需要隧道）
 
@@ -581,7 +665,14 @@ npm start
 
 托盘里会出现一个小球图标。VBS 启动器会隐藏控制台窗口。
 
-如果希望开机自启，给 `start_ball.vbs` 建一个快捷方式，放进启动目录（`Win+R` → `shell:startup`）。
+如果希望开机自启，在仓库根目录执行启动安装器：
+
+```powershell
+cd C:\Tools\claude-status-ball
+powershell -ExecutionPolicy Bypass -File .\windows\install_startup.ps1
+```
+
+它会为球和（远端模式下的）隧道助手创建启动快捷方式；如果 `%USERPROFILE%\.claude-ball\tunnel.conf` 不存在，会提示输入 SSH 目标。本地模式加 `-LocalOnly`，只创建球的快捷方式。也可以手动建快捷方式放进启动目录（`Win+R` → `shell:startup`）。
 
 #### 第 4 步：验证
 
@@ -616,7 +707,7 @@ npm start
 ### 配置
 
 - Hook 目标地址：`CLAUDE_BALL_URL`，默认 `http://127.0.0.1:47831/event`。两种发送器都支持。
-- 端口 `47831` 由应用、SSH `RemoteForward`（远端模式）和 hook 共用。改端口时三处都要改。
+- 端口 `47831` 由应用、hook 和隧道共用（远端模式：`tunnel.conf`，或用 SSH 配置时为 `RemoteForward` 行）。改端口时这些地方都要改。
 - 球的位置保存在 `%APPDATA%\claude-status-ball\position.json`。删除该文件可重置到主屏右下角。
 - 远端模式：hook 和脚本在 `~/.claude-ball/`；设置在 `~/.claude/settings.json`。
 - 本地模式：hook 和脚本在 `%USERPROFILE%\.claude-ball\`；设置在 `%USERPROFILE%\.claude\settings.json`。
@@ -663,7 +754,14 @@ WSL 里的 Claude Code 不会使用 Windows 上安装的 hook。按 [Claude Code
 
 #### 远端模式：服务器上 `ss -ltn | grep 47831` 没东西
 
-SSH 客户端没有请求转发。按顺序检查：
+如果用的是隧道助手，先看 `%USERPROFILE%\claude-status-ball-tunnel.log`。Windows 提示文件被占用时，先停止隧道。日志里应该有 `ssh=... server=...`；反复出现 `ssh exited:` 说明 ssh 在失败。常见原因：
+
+- `Permission denied (publickey)`：免密登录没配好，先手动执行 `ssh <目标>`。
+- `Host key verification failed`：先手动连接一次并接受服务器指纹。
+- `ssh.exe not found`：在 `%USERPROFILE%\.claude-ball\tunnel.conf` 里设置 `SSH_EXE`。
+- `remote port forwarding failed`：远端 47831 已被另一个隧道占用，停掉重复的。
+
+如果用的是 `RemoteForward`，按顺序检查：
 
 1. 文件是 `%USERPROFILE%\.ssh\config`，不是 `config.txt`。
 2. `Host` 块和 `ssh` 命令里的主机名完全一致。
@@ -754,7 +852,12 @@ remote/     hook 发送器和安装器
   hook_send.js      本地 Windows 发送器（Node）
   install_remote.sh 远端 Linux 安装器
   install_local.js  本地 Windows 安装器
-windows/    SSH 反向隧道示例（远端模式）
+windows/    远端模式的 Windows 辅助脚本
+  ssh_config_example.txt   手动 RemoteForward 示例
+  tunnel.conf.example      复制到 %USERPROFILE%\.claude-ball\tunnel.conf
+  start_tunnel.vbs         隐藏启动隧道
+  start_tunnel.cmd         隧道重连与日志
+  install_startup.ps1      创建启动快捷方式
 test/       Node/Python 测试和视觉冒烟脚本
 docs/       README 媒体文件
 ```
@@ -763,8 +866,9 @@ docs/       README 媒体文件
 
 1. 远端模式：恢复 `~/.claude/settings.json.bak.*`，或删除包含 `claude-ball` 的 hook 条目；然后删除 `~/.claude-ball/`。
 2. 本地模式：从 `%USERPROFILE%\.claude\settings.json` 删除包含 `claude-ball` 的 hook 条目（或恢复备份），然后删除 `%USERPROFILE%\.claude-ball\hook_send.js`。
-3. 删除应用目录和启动目录里的快捷方式。
-4. 可选：删除 `%APPDATA%\claude-status-ball\`。
+3. 删除启动目录里的 `Claude Status Ball.lnk` 和 `Claude Status Ball Tunnel.lnk`。
+4. 删除应用目录。
+5. 可选：删除 `%APPDATA%\claude-status-ball\`、`%USERPROFILE%\.claude-ball\tunnel.conf` 和 `%USERPROFILE%\claude-status-ball-tunnel.log`。
 
 ### 许可证
 
